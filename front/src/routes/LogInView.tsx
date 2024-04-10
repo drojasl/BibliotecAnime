@@ -9,8 +9,9 @@ import {
 import { useState, useEffect } from "react";
 import axios from "axios";
 import Alert from "@mui/material/Alert";
-import { useLocation } from "react-router-dom";
-import { GoogleLogin } from "react-google-login";
+import { GoogleLogin } from "@react-oauth/google";
+import { jwtDecode } from "jwt-decode";
+import { Route, Routes, Navigate, useLocation } from "react-router-dom";
 
 const ProfileScreen = () => {
   const apiUrl = import.meta.env.VITE_APP_API_URL;
@@ -161,19 +162,44 @@ const ProfileScreen = () => {
     }
   };
 
-  const responseGoogle = (response: any) => {
-    console.log(response);
-    return;
-    if (response?.profileObj) {
-      // Inicio de sesión exitoso, puedes acceder a los datos del usuario aquí
-      console.log("Inicio de sesión exitoso:", response.profileObj);
-      // Aquí puedes realizar cualquier acción adicional, como enviar los datos del usuario al servidor
-    } else {
-      // Inicio de sesión fallido
-      console.log("Inicio de sesión fallido:", response);
+  const authUserGoogle = async (response: any, path: string) => {
+    const responseDecoded = jwtDecode(response?.credential);
+
+    if (path == "login") {
+      try {
+        const requestData = {
+          email: responseDecoded?.email,
+        };
+
+        const response = await axios.post(
+          `${apiUrl}/login/google`,
+          requestData
+        );
+        setAlertMessageLogIn(response?.data?.message);
+        setAlertLogInSeverity("success");
+        setShowAlertLogIn(true);
+
+        const { email, roles, id, nick_name } = response.data.user;
+
+        const loggedUser = {
+          email,
+          roles,
+          id,
+          nick_name,
+        };
+
+        const loggedUserString = JSON.stringify(loggedUser);
+
+        localStorage.setItem("loggedUser", loggedUserString);
+
+        window.location.href = "/";
+      } catch (error) {
+        setAlertMessageLogIn(error?.response?.data?.message);
+        setAlertLogInSeverity("warning");
+        setShowAlertLogIn(true);
+      }
     }
   };
-
   function onSignIn(googleUser) {
     var profile = googleUser.getBasicProfile();
     console.log("ID: " + profile.getId()); // Do not send to your backend! Use an ID token instead.
@@ -260,16 +286,17 @@ const ProfileScreen = () => {
               <hr className="w-[40%]" />
             </div>
             <div className="mt-3 flex items-center justify-evenly">
-              <a href="">
-                <div className="bg-[#FCEDEA] p-2 rounded-full">
-                  <Icon
-                    path={mdiGoogle}
-                    size={0.6}
-                    className="text-[#E05E47]"
-                  />
-                </div>
-              </a>
-              <a href="">
+              <GoogleLogin
+                onSuccess={(credentialResponse) => {
+                  authUserGoogle(credentialResponse, "login");
+                }}
+                onError={() => {
+                  setShowAlertLogIn(true);
+                  setAlertLogInSeverity("Error");
+                  setAlertMessageLogIn("Login Failed");
+                }}
+              />
+              {/* <a href="">
                 <div className="bg-[#EDF2F8] p-2 rounded-full">
                   <Icon
                     path={mdiFacebook}
@@ -282,7 +309,7 @@ const ProfileScreen = () => {
                 <div className="bg-[#E9E9E9] p-2 rounded-full">
                   <Icon path={mdiApple} size={0.6} className="text-[#212121]" />
                 </div>
-              </a>
+              </a> */}
             </div>
           </div>
         </>
@@ -382,49 +409,6 @@ const ProfileScreen = () => {
               >
                 Start
               </button>
-            </div>
-            <div className="mt-3 flex items-center">
-              <hr className="w-[40%]" />
-              <p className="w-[20%] text-center small">OR</p>
-              <hr className="w-[40%]" />
-            </div>
-            <div className="mt-3 flex items-center justify-evenly">
-              <GoogleLogin
-                clientId="904507807250-e41kfkes0qlhrur0j7k2gms6cvhdiibu.apps.googleusercontent.com"
-                buttonText=""
-                onSuccess={responseGoogle}
-                onFailure={responseGoogle}
-                cookiePolicy={"single_host_origin"}
-                render={(renderProps) => (
-                  <a
-                    onClick={renderProps.onClick}
-                    className="hover:cursor-pointer"
-                  >
-                    <div className="bg-[#FCEDEA] p-2 rounded-full">
-                      <Icon
-                        path={mdiGoogle}
-                        size={0.6}
-                        className="text-[#E05E47]"
-                      />
-                    </div>
-                  </a>
-                )}
-              />
-
-              <a href="">
-                <div className="bg-[#EDF2F8] p-2 rounded-full">
-                  <Icon
-                    path={mdiFacebook}
-                    size={0.6}
-                    className="text-[#4E7CBF]"
-                  />
-                </div>
-              </a>
-              <a href="">
-                <div className="bg-[#E9E9E9] p-2 rounded-full">
-                  <Icon path={mdiApple} size={0.6} className="text-[#212121]" />
-                </div>
-              </a>
             </div>
           </div>
         </>

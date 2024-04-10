@@ -29,4 +29,5 @@ Route::post('/setRatingVideo', [videoController::class, 'setRatingVideo']);
 Route::post('/getVideoRating', [videoController::class, 'getVideoRating']);
 Route::post('/addSongToPlaylist', [videoController::class, 'addSongToPlaylist']);
 Route::post('/login', [userController::class, 'logIn']);
+Route::post('/login/google', [userController::class, 'authGoogle']);
 Route::post('/signup', [userController::class, 'signUp']);
