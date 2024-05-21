@@ -20,8 +20,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('live');
 });
-
+/*
 Route::get('/test', [testDocumentController::class, 'dataFile']);
 Route::post('/test2', [testDocumentController::class, 'uploadFile']);
-
+*/
 require __DIR__.'/auth.php';

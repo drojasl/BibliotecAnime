@@ -6,34 +6,69 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use App\Models\VideoReview;
+use App\Models\Video;
+use App\Models\PlaylistVideo;
 
 class videoController extends Controller
 {
-    public function getVideoList(Request $request)
-    {
-        $videoCount = DB::table('videos')->count();        
-        $randomVideoIndex = rand(1, $videoCount);
-        
-        // Obtener un video aleatorio
-        $randomVideo = DB::table('videos')->skip($randomVideoIndex - 1)->take(1)->first();
+    public function getCurrentVideo() {
+        // header('Access-Control-Allow-Origin: *');
+        // header('Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE');
 
-        // Obtener el rating del video
-        $videoRating = 0;
-        $videoReview = VideoReview::where('video_id', $randomVideo->id)
-            ->where('user_id', $request->input('user_id'))
-            ->first();
-
-        if ($videoReview) {
-            $videoRating = $videoReview->rating;
+        $playing = PlaylistVideo::where('playlist_id', PlaylistVideo::LIVE_PLAYLIST_ID)->first();
+    
+        if ($playing) {
+            $video = Video::find($playing->video_id);
+        } else {
+            $video = Video::inRandomOrder()->first();
+            PlaylistVideo::create([
+                'playlist_id' => 1,
+                'video_id' => $video->id,
+            ]);
         }
 
-        // Devolver el video y su rating
+        $rating = VideoReview::where('user_id', 1)
+            ->where('video_id', $video->id)
+            ->first();
+
+        $video->rating = $rating ? $rating->rating : 0;
+
         return response()->json([
-            'video' => $randomVideo,
-            'rating' => $videoRating,
+            'video' => $video,
         ]);
+    }    
+
+    public function getNextVideo() {
+        $playingList = PlaylistVideo::where('playlist_id', PlaylistVideo::LIVE_PLAYLIST_ID)->get();
+
+        if (isset($playingList[1])) {
+            $queue = $playingList[1];
+            $video = Video::find($queue->video_id);
+        } else {
+            $current = $playingList[0];
+            do {
+                $video = Video::inRandomOrder()->first();
+            } while ($current->id == $video->id);
+
+            PlaylistVideo::create([
+                'playlist_id' => PlaylistVideo::LIVE_PLAYLIST_ID,
+                'video_id' => $video->id,
+            ]);
+        }
+        
+        $rating = VideoReview::where('user_id', 1)
+            ->where('video_id', $video->id)
+            ->first();
+
+        $video->rating = $rating ? $rating->rating : 0;
+        return  response()->json($video);
     }
-    
+
+    public function currentVideoEnded() {
+        PlaylistVideo::where('playlist_id', PlaylistVideo::LIVE_PLAYLIST_ID)->first()->delete();
+        $this->getNextVideo();
+    }
+
     public function setRatingVideo(Request $request)
     {
         $request->validate([
@@ -42,25 +77,101 @@ class videoController extends Controller
             'data.video_rating' => 'required|integer|min:1|max:5',
         ]);
 
-        // Buscar o crear una instancia de VideoReview basada en las claves user_id y video_id
         $videoReview = VideoReview::firstOrNew([
             'user_id' => $request->input('data.id_user'),
             'video_id' => $request->input('data.id_video'),
         ]);
 
-        // Actualizar el rating si ya existe un registro
         if ($videoReview->exists) {
             $videoReview->rating = $request->input('data.video_rating');
         } else {
-            // Si no existe un registro, establecer el rating y guardar el nuevo registro
             $videoReview->rating = $request->input('data.video_rating');
         }
 
-        // Guardar el registro
         $videoReview->save();
 
-        // Respuesta exitosa
         return response()->json(['success' => true, 'message' => 'Video rating saved successfully']);
+    }
+/*
+    public function getVideoList(Request $request)
+    {
+        $playingSong = PlayingSong::where('playing', 1)->first();
+        $videoCount = DB::table('videos')->count();
+
+        if (!$playingSong) {
+            $randomVideoIndex = rand(1, $videoCount);
+            $getVideo = DB::table('videos')->skip($randomVideoIndex - 1)->take(1)->first();
+
+            PlayingSong::create([
+                'song_id' => $getVideo->id,
+                'playing' => true,
+            ]);
+        } else {
+            $getVideo = DB::table('videos')->where('id', $playingSong->song_id)->first();
+
+            $nextSong = PlayingSong::where('playing', 0)->first();
+            if (!$nextSong) {
+                $randomVideoIndex = rand(1, $videoCount);
+                $nextVideo = DB::table('videos')->skip($randomVideoIndex - 1)->take(1)->first();
+                PlayingSong::create([
+                    'song_id' => $nextVideo->id,
+                    'playing' => false,
+                ]);
+            } else {
+                $nextVideo = DB::table('videos')->where('id', $nextSong->song_id)->first();
+            }
+        }
+
+        $videoRating = 0;
+        $videoReview = VideoReview::where('video_id', $getVideo->id)
+            ->where('user_id', $request->input('user_id'))
+            ->first();
+
+        if ($videoReview) {
+            $videoRating = $videoReview->rating;
+        }
+
+        $nextVideoRating = 0;
+        if ($nextVideo) {
+            $nextVideoReview = VideoReview::where('video_id', $nextVideo->id)
+                ->where('user_id', $request->input('user_id'))
+                ->first();
+
+            if ($nextVideoReview) {
+                $nextVideoRating = $nextVideoReview->rating;
+            }
+        }
+
+        return response()->json([
+            'actualVideo' => $getVideo,
+            'nextVideo' => $nextVideo,
+            'rating' => $videoRating,
+            'nextVideoRating' => $nextVideoRating,
+        ]);
+    }
+    
+    public function cleanPlaying(Request $request)
+    {
+        try {
+            $playingSong = PlayingSong::where('playing', 1)->first();
+
+            if ($playingSong) {
+                $playingSong->delete();
+            }
+
+            $nextSong = PlayingSong::where('playing', 0)->first();
+
+            if ($nextSong) {
+                $nextSong->update([
+                    'playing' => true,
+                    'updated_at' => now(),
+                ]);
+            }
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()]);
+        }
     }
 
     public function getVideoRating(Request $request)
@@ -92,9 +203,6 @@ class videoController extends Controller
     
     public function getVideos(Request $request)
     {
-        // header('Access-Control-Allow-Origin: *');
-        // header('Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE');
-
         $user_id = $request->input('user_id');
         $playlists = DB::table('playlists')
         ->select('id', 'name')
@@ -123,4 +231,5 @@ class videoController extends Controller
 
         return response()->json(['video' => $videos, 'playlists' => $playlistVideos]);
     }
+*/
 }

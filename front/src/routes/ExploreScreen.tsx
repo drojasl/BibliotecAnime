@@ -165,8 +165,7 @@ const ExploreScreen = () => {
     }
   };
 
-  const addSong = async (playlist:any) => {
-
+  const addSong = async (playlist: any) => {
     const playlistData = {
       id_video: selectedSong,
       id_playlist: playlist,
@@ -188,7 +187,7 @@ const ExploreScreen = () => {
     } catch (error) {
       console.error("Error en la solicitud POST", error);
     }
-  }
+  };
 
   return (
     <div className="text-white">
@@ -281,17 +280,18 @@ const ExploreScreen = () => {
         </div>
       </div>
       <div
-        className="fixed bottom-0 p-5 w-full left-0 flex flex-col justify-center items-center "
+        className="fixed bottom-0 p-5 w-full  flex flex-col justify-center items-center "
         style={{
           backgroundColor: !viewPlayingVideo
             ? "rgba(255, 255, 255, 0)"
             : "rgba(0, 0, 0, 0.9)",
+          left: !viewPlayingVideo ? "auto" : "0px",
         }}
       >
         {isPlayingVideo && (
           <>
             <div
-              className=" h-[80vh] w-[80%] rounded-lg"
+              className=" h-[80vh] w-[80%] rounded-lg "
               style={{ display: !viewPlayingVideo ? "none" : "block" }}
             >
               <video
