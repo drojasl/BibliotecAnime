@@ -9,12 +9,19 @@ class PlaylistVideo extends Model
 {
     use HasFactory;
 
-    const LIVE_PLAYLIST_ID = 1;
-
     protected $table = 'playlist_video';
 
-    protected $fillable = [
-        'playlist_id',
-        'video_id',
-    ];
+    protected $guarded = ['created_at', 'updated_at'];
+
+    const LIVE_PLAYLIST_ID = 1;
+
+    public function video()
+    {
+        return $this->belongsTo(Video::class);
+    }
+
+    public function playlist()
+    {
+        return $this->belongsTo(Playlist::class);
+    }
 }

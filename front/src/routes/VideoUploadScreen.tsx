@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import Icon from "@mdi/react";
-import { mdiCloudUploadOutline, mdiVideoOff, mdiVideoSwitch } from "@mdi/js";
+import { mdiCloudUploadOutline, mdiVideoOff } from "@mdi/js";
+import Alert from "@mui/material/Alert";
 
 const VideoUploadScreen = () => {
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedFile, setSelectedFile] = useState<any>(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState("");
   const [isVideoPlayable, setIsVideoPlayable] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showAlert, setShowAlert] = useState(false);
+  const [sendingData, setSendingData] = useState(false);
   const [isRequiredDataEmpty, setIsRequiredDataEmpty] = useState(true);
   const [animeName, setAnimeName] = useState("");
   const [songName, setSongName] = useState("");
@@ -21,18 +24,27 @@ const VideoUploadScreen = () => {
   const [animeType, setAnimeType] = useState("");
   const [number, setNumber] = useState("");
   const [version, setVersion] = useState("");
+  const [alertSeverity, setAlertSeverity] = useState('info');
+  const [alertMessage, setAlertMessage] = useState("");
   const [releaseYear, setReleaseYear] = useState("");
   const [lyrics, setLyrics] = useState("");
   const apiUrl = import.meta.env.VITE_APP_API_URL;
+  const [userId, setUserId] = useState(0);
 
   const handleLanguageChange = (event: any) => {
     const value = event.target.value;
     setSelectedLanguage(value);
-
-    if (value === "Otro") {
-      console.log("eo");
-    }
   };
+
+  useEffect(() => {
+    const loggedUserString = localStorage.getItem("loggedUser");
+    if (loggedUserString) {
+      const loggedUser = JSON.parse(loggedUserString);
+      const userId = loggedUser.id;
+
+      setUserId(userId);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchLanguages = async () => {
@@ -43,12 +55,12 @@ const VideoUploadScreen = () => {
           },
         });
         setLanguages(response.data.response);
-  
+
       } catch (error) {
         console.error("Error en la solicitud POST", error);
       }
     };
-  
+
     fetchLanguages();
   }, []);
 
@@ -119,6 +131,8 @@ const VideoUploadScreen = () => {
   };
 
   const handleFormSubmit = async (event: any) => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setSendingData(true);
     event.preventDefault();
 
     if (!apiUrl) {
@@ -131,7 +145,7 @@ const VideoUploadScreen = () => {
     formData.append('file', selectedFile);
 
     Object.entries({
-      'userId': 1,
+      'userId': userId,
       'artistName': artistName,
       'animeFormat': animeFormat,
       'type': animeType,
@@ -146,7 +160,7 @@ const VideoUploadScreen = () => {
       'songName': songName,
       'animeName': animeName,
     }).forEach(([key, value]) => {
-        formData.append(key, value);
+      formData.append(key, value);
     });
 
     axios
@@ -156,12 +170,28 @@ const VideoUploadScreen = () => {
         },
       })
       .then((response) => {
-        console.log(response);
+        setShowAlert(true);
+        setAlertMessage('Video uploaded successfully!!');
+        setAlertSeverity('success');
       })
       .catch((error) => {
-        console.error(error);
+        setShowAlert(true);
+        setAlertMessage('An error occurred while uploading the video, please try again');
+        setAlertSeverity('warning');
       })
+      .finally(() => {
+        setSendingData(false);
+      });
   };
+
+  useEffect(() => {
+    if (showAlert) {
+      const timer = setTimeout(() => {
+        setShowAlert(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showAlert]);
 
   const deleteVideo = () => {
     setIsLoading(false);
@@ -171,6 +201,9 @@ const VideoUploadScreen = () => {
   return (
     <div className="text-white flex justify-center items-center py-5">
       <div className="bg-[#202021] w-[90%] lg:w-[50%] px-3 md:px-5 py-5 rounded-lg">
+        {showAlert && (
+          <Alert severity={alertSeverity} className="mb-5">{alertMessage}</Alert>
+        )}
         <h2 className="font-bold text-center">Upload Video</h2>
 
         <div className="rounded-md mt-5 h-[15em] max-h-[15em] bg-[#272727] w-[100%] flex flex-column justify-center text-center items-center">
@@ -360,9 +393,8 @@ const VideoUploadScreen = () => {
               </div>
               <div className="mt-3 grid grid-cols-12">
                 <div
-                  className={`px-2 col-span-${
-                    selectedLanguage === "Otro" ? "6" : "12"
-                  }`}
+                  className={`px-2 col-span-${selectedLanguage === "Otro" ? "6" : "12"
+                    }`}
                 >
                   <label htmlFor="videoType">Idioma</label>
                   <select
@@ -460,6 +492,12 @@ const VideoUploadScreen = () => {
           </>
         )}
       </div>
+      {sendingData && (
+        <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-gray-700 bg-opacity-50 z-[3000]">
+          <img width="100px" src="./loadingCat.gif" alt="loading" />
+        </div>
+      )}
+
     </div>
   );
 };

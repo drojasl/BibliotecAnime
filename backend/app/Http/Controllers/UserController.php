@@ -6,22 +6,19 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class userController extends Controller
 {
     public function logIn(Request $request)
     {
-
-        // header('Access-Control-Allow-Origin: *');
-        // header('Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE');
-
         // Validate the form data
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
         ], [
-            'required' => 'Todos los campos son obligatorios.',
-            'email.email' => 'El correo electrónico debe ser válido.',
+            'required' => 'All fields are required.',
+            'email.email' => 'The email must be valid.',
         ]);
 
         // Get form data
@@ -49,14 +46,11 @@ class userController extends Controller
 
     public function authGoogle(Request $request)
     {
-        // header('Access-Control-Allow-Origin: *');
-        // header('Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE');
-
         // Validate the form data
         $request->validate([
             'email' => 'required|email',
         ], [
-            'email.email' => 'El correo electrónico debe ser válido.',
+            'email.email' => 'The email must be valid.',
         ]);
 
         // Get form data
@@ -82,8 +76,8 @@ class userController extends Controller
             'password' => 'required',
             'username' => 'required',
         ], [
-            'required' => 'Todos los campos son obligatorios.',
-            'email.email' => 'El correo electrónico debe ser válido.',
+            'required' => 'All fields are required.',
+            'email.email' => 'The email must be valid.',
         ]);
 
         // Get form data
@@ -95,14 +89,14 @@ class userController extends Controller
         $existingUserWithEmail = User::where('email', $email)->first();
         $existingUserWithUsername = User::where('nick_name', $username)->first();
 
-        // If user already exists with the email or username, return an error
+        // If user already exists with the email, return an error
         if ($existingUserWithEmail) {
-            return response()->json(['message' => 'El correo electrónico ya está registrado'], 400);
+            return response()->json(['message' => 'The email is already registered'], 400);
         }
 
         // If user already exists with the username, return an error
         if ($existingUserWithUsername) {
-            return response()->json(['message' => 'El nombre de usuario ya está en uso'], 400);
+            return response()->json(['message' => 'The username is already in use'], 400);
         }
 
         // Create new user
@@ -115,6 +109,83 @@ class userController extends Controller
         $user->save();
 
         // Return success message
-        return response()->json(['message' => 'Usuario registrado exitosamente', 'user' => $user], 200);
+        return response()->json(['message' => 'User registered successfully', 'user' => $user], 200);
     }
+
+    public function getUserByUsername($username)
+    {
+        // Find user by username (nick_name)
+        $user = User::where('nick_name', $username)->first();
+
+        // If the user is found, get their playlists and videos
+        if ($user) {
+            $playlists = DB::table('playlists')
+                ->where('user_id', $user->id)
+                ->get();
+
+            // For each playlist, get the associated videos
+            foreach ($playlists as $playlist) {
+                $playlistVideos = DB::table('playlist_video')
+                    ->join('videos', 'playlist_video.video_id', '=', 'videos.id')
+                    ->where('playlist_video.playlist_id', $playlist->id)
+                    ->select('videos.*')
+                    ->get();
+
+                $playlist->videos = $playlistVideos;
+            }
+
+            return response()->json([
+                'message' => 'User found',
+                'user' => [
+                    'id' => $user->id,
+                    'profile_pic' => $user->profile_pic,
+                    'nick_name' => $user->nick_name,
+                    'playlists' => $playlists,
+                ]
+            ], 200);
+        }
+
+        // If the user is not found, return error 404
+        return response()->json(['message' => 'User not found'], 404);
+    }
+
+    /**
+     * Validate if a username is available.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function validateUsername(Request $request)
+    {
+        $request->validate([
+            'username' => [
+                'required',
+                'string',
+                'max:255',
+                'unique:users,nick_name',
+            ],
+        ], [
+            'username.unique' => 'Sorry, this username is already taken.',
+        ]);
+
+        return response()->json(['available' => true]);
+    }
+
+    public function updateUser(Request $request, $id)
+    {
+        $user = User::find($id);
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        $user->nick_name = $request->input('nick_name');
+        $user->profile_pic = $request->input('profile_pic');
+
+        $user->save();
+
+        return response()->json(['message' => 'Successfully updated user', 'user' => $user]);
+    }
+
+    
 }

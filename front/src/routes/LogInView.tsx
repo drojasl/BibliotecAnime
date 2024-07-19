@@ -109,13 +109,14 @@ const ProfileScreen = () => {
 
       localStorage.setItem("loggedUser", loggedUserString);
 
-      window.location.href = "/";
+      window.location.href = `/profile/${nick_name}`;
     } catch (error) {
       setAlertMessageLogIn(error?.response?.data?.message);
       setAlertLogInSeverity("warning");
       setShowAlertLogIn(true);
     }
   };
+
 
   const signUpUser = async () => {
     try {

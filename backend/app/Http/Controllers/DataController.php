@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\File;
-
+use App\Models\Video;
 
 class dataController extends Controller
 {
@@ -67,9 +67,8 @@ class dataController extends Controller
 
             $videoId = DB::table('videos')->insertGetId([
                 'file_name' => $fileName,
-                'user_id' => 1, //! TODO
                 'artist' => $artistId,
-                'language' => $languageId,
+                'language' => $request->input('selectedLanguage'),
                 'user_id' => $request->input('userId'),
                 'anime' => $request->input('animeName'),
                 'anime_alt' => $request->input('alternativeAnimeName'),
@@ -101,4 +100,89 @@ class dataController extends Controller
             return response()->json(['error' => 'An error occurred while saving video data.', $e], 500);
         }
     }
+
+    public function updateVideoData(Request $request)
+    {
+        // header("Access-Control-Allow-Origin: *");
+        // header("Access-Control-Allow-Methods: *");
+        // header("Access-Control-Allow-Headers: *");
+
+        $request->validate([
+            'id' => 'required|integer|exists:videos,id',
+            'songName' => 'nullable|string',
+            'animeName' => 'nullable|string',
+            'fatherAnimeName' => 'nullable|string',
+            'alternativeAnimeName' => 'nullable|string',
+            'type' => 'nullable|string',
+            'animeFormat' => 'nullable|string',
+            'alternativeAnimeTitle' => 'nullable|string',
+            'artistName' => 'nullable|string',
+            'selectedLanguage' => 'nullable|string',
+            'releaseYear' => 'nullable|integer',
+            'animeNumber' => 'nullable|integer',
+            'artistVersion' => 'nullable|string',
+            'lyric' => 'nullable|string',
+        ]);
+    
+        try {
+            $video = Video::find($request->input('id'));
+    
+            if (!$video) {
+                return response()->json(['success' => false, 'message' => 'Video not found'], 404);
+            }
+    
+            if ($request->hasFile('file')) {
+                $file = $request->file('file');
+                $originalFile = $request->input('originalFile');
+                $timestamp = time();
+                $fileName = $timestamp . '.' . $file->getClientOriginalExtension();
+                $rootPath = realpath(dirname(__FILE__) . DIRECTORY_SEPARATOR . '..\..\..\..');
+                
+                $destinationPath = "{$rootPath}/front/public/anime/{$fileName}";
+    
+                $file->move(public_path('media/videos/anime'), $fileName);
+                File::copy(public_path("media/videos/anime/{$fileName}"), $destinationPath);
+                $video->file_name = $fileName;
+
+                if ($originalFile) {
+                    $originalFilePath = public_path('media/videos/anime') . '/' . $originalFile;
+                    if (file_exists($originalFilePath)) {
+                        unlink($originalFilePath);
+                    }
+                }
+
+                if ($originalFile) {
+                    $originalFilePathFront = "{$rootPath}/front/public/anime/{$originalFile}";
+                    if (file_exists($originalFilePathFront)) {
+                        unlink($originalFilePathFront);
+                    } else {
+                        Log::error("Archivo no encontrado en frontend: {$originalFilePathFront}");
+                    }
+                }
+            }
+            
+            $video->title = $request->input('songName') ?: null;
+            $video->anime = $request->input('animeName') ?: null;
+            $video->anime_parent = $request->input('fatherAnimeName') ?: null;
+            $video->anime_alt = $request->input('alternativeAnimeName') ?: null;
+            $video->type = $request->input('type') ?: null;
+            $video->format = $request->input('animeFormat') ?: null;
+            $video->title_alt = $request->input('alternativeAnimeTitle') ?: null;
+            $video->artist = $request->input('artistName') ?: null;
+            $video->language = $request->input('selectedLanguage') ?: null;
+            $video->year = $request->input('releaseYear') ?: null;
+            $video->number = $request->input('animeNumber') ?: null;
+            $video->version = $request->input('artistVersion') ?: null;
+            $video->lyrics = $request->input('lyric') ?: null;
+    
+            $video->save();
+    
+            return response()->json(['success' => true, 'message' => 'Video data updated successfully']);
+        } catch (\Exception $e) {
+            Log::error('Error updating video data: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Error updating video data', 'error' => $e->getMessage()], 500);
+        }
+    }
+    
+
 }

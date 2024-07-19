@@ -2,173 +2,154 @@ import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import Icon from "@mdi/react";
 import {
-  mdiArrowExpand,
   mdiVolumeHigh,
-  mdiArrowCollapse,
   mdiVolumeOff,
   mdiMusicCircleOutline,
+  mdiFullscreen,
+  mdiFullscreenExit,
 } from "@mdi/js";
 import Rating from "@mui/material/Rating";
+import Alert from "@mui/material/Alert";
 
 export const LiveScreen = () => {
   const apiUrl = import.meta.env.VITE_APP_API_URL;
-
   const videoPlayer1 = useRef<any>(null);
   const videoPlayer2 = useRef<any>(null);
-
   const [isHovered, setIsHovered] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [firstFileUrl, setFirstFileUrl] = useState("");
-  const [secondFileUrl, setSecondFileUrl] = useState("");
-  const [animeName1, setAnimeName1] = useState("");
-  const [animeName2, setAnimeName2] = useState("");
-  const [titleName1, setTitleName1] = useState("");
-  const [titleName2, setTitleName2] = useState("");
-  const [ratingVideo1, setRatingVideo1] = useState(0);
-  const [ratingVideo2, setRatingVideo2] = useState(0);
+  const [isMuted, setIsMuted] = useState(true);
   const [firstVideoData, setFirstVideoData] = useState<any>(null);
   const [secondVideoData, setSecondVideoData] = useState<any>(null);
-  const [isFirstPlayer, setFirstPlayer] = useState(true);
-  const [isFirstEver, setFirstEver] = useState(true);
-  const [firstExecuted, setFirstExecuted] = useState(true);
-  const [secondExecuted, setSecondExecuted] = useState(false);
+  const [isFirstPlayer, setIsFirstPlayer] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [ratingVideo1, setRatingVideo1] = useState<number | null>(null);
+  const [ratingVideo2, setRatingVideo2] = useState<number | null>(null);
+
+  useEffect(() => {
+    const loggedUserString = localStorage.getItem("loggedUser");
+
+    if (loggedUserString) {
+      const loggedUser = JSON.parse(loggedUserString);
+      setUser(loggedUser);
+      getCurrentVideo(loggedUser?.id);
+      getNextVideo(2, loggedUser?.id);
+    } else {
+      getCurrentVideo();
+      getNextVideo(2);
+    }
+
+    return () => {
+      const video1 = videoPlayer1.current;
+      const video2 = videoPlayer2.current;
+
+      if (video1) video1.removeEventListener("ended", endFirstVideo);
+      if (video2) video2.removeEventListener("ended", endSecondVideo);
+    };
+  }, []);
 
   useEffect(() => {
     const video1 = videoPlayer1.current;
     const video2 = videoPlayer2.current;
-    getCurrentVideo();
-    getNextVideo(2);
 
-    video1.addEventListener('ended', () => {
-      endFirstVideo()
-    });
+    if (video1) video1.addEventListener("ended", endFirstVideo);
+    if (video2) video2.addEventListener("ended", endSecondVideo);
 
-    video2.addEventListener('ended', () => {
-      endSecondVideo()
-    });
-  }, []);
+    return () => {
+      if (video1) video1.removeEventListener("ended", endFirstVideo);
+      if (video2) video2.removeEventListener("ended", endSecondVideo);
+    };
+  }, [videoPlayer1, videoPlayer2]);
 
-  const getCurrentVideo = async () => {
-    axios.get(`${apiUrl}/current`,)
-      .then((data) => {
-        const videData = data?.data;
-        setFirstVideoData(videData)
-      })
-      .catch((error) => {
-        console.log({ error })
-      });
-  }
+  const getCurrentVideo = async (userId?: any) => {
+    try {
+      const response = await axios.get(`${apiUrl}/current/${userId}`);
+      if (response.data) {
+        setFirstVideoData(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching current video:", error);
+      showAlert("Error fetching current video");
+    }
+  };
 
-  const getNextVideo = async (video: number) => {
-    axios.get(`${apiUrl}/next`,)
-      .then((data) => {
-
-        const videData = data?.data
-        if (video == 1) {
-          setFirstVideoData(videData)
+  const getNextVideo = async (order: any, userId?: any) => {
+    try {
+      const response = await axios.get(`${apiUrl}/next/${userId}`);
+      if (response.data) {
+        if (order === 1) {
+          setFirstVideoData(response.data);
         } else {
-          setSecondVideoData(videData)
+          setSecondVideoData(response.data);
         }
-      })
-      .catch((error) => {
-        console.log({ error })
-      });
-  }
+      }
+    } catch (error) {
+      console.error("Error fetching next video:", error);
+      showAlert("Error fetching next video");
+    }
+  };
 
   useEffect(() => {
     if (firstVideoData) {
-      if (isFirstEver) {
-        setFirstFileUrl(firstVideoData?.video?.file_name)
-        setAnimeName1(firstVideoData?.video?.anime)
-        setTitleName1(firstVideoData?.video?.title)
-        setRatingVideo1(firstVideoData?.video?.rating)
-      } else {
-        setFirstFileUrl(firstVideoData?.file_name)
-        setAnimeName1(firstVideoData?.anime)
-        setTitleName1(firstVideoData?.title)
-        setRatingVideo1(firstVideoData?.rating)
-      }
+      const video1 = videoPlayer1.current;
+      video1.currentTime = firstVideoData?.seconds_elapsed || 0;
     }
   }, [firstVideoData]);
 
   useEffect(() => {
-    if (secondVideoData) {
-      setSecondFileUrl(secondVideoData?.file_name)
-      setAnimeName2(secondVideoData.anime)
-      setTitleName2(secondVideoData.title)
-      setRatingVideo2(secondVideoData.rating)
+    if (isFirstPlayer) {
+      videoPlayer1.current.play();
+      videoPlayer2.current.pause();
+    } else {
+      videoPlayer1.current.pause();
+      videoPlayer2.current.play();
     }
-  }, [secondVideoData]);
-
-  useEffect(() => {
-    if (firstFileUrl && isFirstPlayer) {
-      console.log('PLAY FIRST VIDEO')
-      const video1 = videoPlayer1.current;
-      const video2 = videoPlayer2.current;
-
-      video2.addEventListener('loadedmetadata', () => {
-        if (isFirstPlayer) {
-          if (isFirstEver) {
-            setFirstEver(false)
-          }
-          video2.pause();
-          video1.play();
-        }
-      });
-    }
-  }, [firstFileUrl, isFirstPlayer]);
-
-  useEffect(() => {
-    if (secondFileUrl && !isFirstPlayer) {
-      const video1 = videoPlayer1.current;
-      const video2 = videoPlayer2.current;
-
-
-      if (!isFirstPlayer) {
-        video1.addEventListener('loadedmetadata', () => {
-          video1.pause();
-          video2.play();
-        });
-      }
-    }
-  }, [secondFileUrl, isFirstPlayer]);
+  }, [isFirstPlayer]);
 
   const endFirstVideo = async () => {
-    setFirstPlayer(false)
-    setAnimeName1('')
+    const loggedUserString = localStorage.getItem("loggedUser");
+    const loggedUser = JSON.parse(loggedUserString);
 
-    try {
-      await currentEnded()
-      await getNextVideo(1)
-    } catch (error) {
-
-    }
-  }
-
-  const endSecondVideo = async () => {
-    console.log('END SECOND VIDEO')
-    setFirstPlayer(true)
-    setAnimeName2('')
-
-    try {
-      await currentEnded()
-      await getNextVideo(2)
-
-    } catch (error) {
-
-    }
-  }
-
-  const currentEnded = async () => {
-    axios.get(`${apiUrl}/currentEnded`,)
+    setIsFirstPlayer(false);
+    currentEnded();
+    getNextVideo(1, loggedUser?.id);
   };
 
-  // HOVER SHOW VIDEO DETAILS
-  const showVideoDetails = () => {
-    if (isHovered) {
-      return;
+  const endSecondVideo = async () => {
+    const loggedUserString = localStorage.getItem("loggedUser");
+    const loggedUser = JSON.parse(loggedUserString);
+
+    setIsFirstPlayer(true);
+    currentEnded();
+    getNextVideo(2, loggedUser?.id);
+  };
+
+  const currentEnded = async () => {
+    try {
+      await axios.get(`${apiUrl}/currentEnded`);
+    } catch (error) {
+      console.error("Error ending current video:", error);
+      showAlert("Error ending current video");
     }
+  };
+
+  const showAlert = (message: string) => {
+    setAlertVisible(true);
+    setTimeout(() => {
+      setAlertVisible(false);
+    }, 2000);
+  };
+
+  const toggleMute = () => {
+    setIsMuted((prev) => !prev);
+  };
+
+  const toggleFullScreen = () => {
+    setIsFullScreen((prev) => !prev);
+  };
+
+  const showVideoDetails = () => {
+    if (isHovered) return;
 
     setIsHovered(true);
     let mouseInactiveTimeout: number;
@@ -187,48 +168,15 @@ export const LiveScreen = () => {
     }, 3000);
   };
 
-  // MUTE OR UNMUTE VIDEO
-  const toggleMute = () => {
-    const video1 = videoPlayer1.current;
-    const video2 = videoPlayer2.current;
-
-    if (video1) {
-      video1.muted = !video1.muted;
-    }
-    if (video2) {
-      video2.muted = !video2.muted;
-    }
-
-    setIsMuted(!isMuted);
-  };
-
-  // FULL SCREEN VIEW
-  const toggleFullScreen = () => {
-    const element = document.documentElement;
-
-    if (!isFullScreen) {
-      if (element.requestFullscreen) {
-        element.requestFullscreen();
-      }
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      }
-    }
-
-    setIsFullScreen(!isFullScreen);
-  };
-
   const ratedVideo = async (rating: number, video: any, number: number) => {
-
-    if (number == 1) {
+    if (number === 1) {
       setRatingVideo1(rating);
     } else {
       setRatingVideo2(rating);
     }
 
     const videoData = {
-      id_user: 1,
+      id_user: user?.id || 1,
       id_video: video?.id,
       video_rating: rating,
     };
@@ -236,59 +184,56 @@ export const LiveScreen = () => {
     try {
       await axios.post(
         `${apiUrl}/setRatingVideo`,
-        {
-          data: videoData,
-        },
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
+        { data: videoData },
+        { headers: { "Content-Type": "application/json" } }
       );
     } catch (error) {
       console.error("Error en la solicitud POST", error);
+      showAlert("Error submitting rating");
     }
   };
+
   return (
-    <>
-      <section className="flex justify-center items-center py-3 h-[100%]">
+    <section className="flex justify-center items-center h-[100%] md:py-3">
+      <div>
         <div
           className={`${!isFullScreen
-            ? "w-full h-[95vh] relative"
+            ? "md:h-[90vh] w-[80vw] relative"
             : "w-screen h-screen absolute top-0 left-0"
-            } `}
+            }`}
         >
           <div
-            className={`absolute bg-black bg-opacity-50 w-full h-full ${isHovered ? "opacity-100" : "opacity-10"
-              }  rounded-lg`}
+            className={`absolute bg-black bg-opacity-50 w-full h-full ${isHovered ? "opacity-100" : "opacity-10"} rounded-lg`}
             style={{ zIndex: 100 }}
             onMouseMove={showVideoDetails}
             onMouseLeave={() => setIsHovered(false)}
           >
-            <div className="absolute top-3 left-0 bg-white rounded-lg py-2 mx-3 px-3 bg-opacity-50 flex items-center justify-between text-white">
-              <div>
+            <div className="hidden md:flex absolute top-3 left-0 bg-white rounded-lg py-2 mx-3 px-3 items-center justify-between">
+              <div className="text-black">
                 <div className="flex items-center">
                   <Icon path={mdiMusicCircleOutline} size={0.6} />
                   <p className="font-bold text-[1.3em] ml-1">
-                    {isFirstPlayer ? animeName1 : animeName2}
+                    {isFirstPlayer ? firstVideoData?.video?.anime : secondVideoData?.video?.anime}
                   </p>
                 </div>
                 <p className="opacity-50">
-                  {isFirstPlayer ? titleName1 : titleName2}
+                  {isFirstPlayer ? firstVideoData?.video?.title : secondVideoData?.video?.title}
                 </p>
-                <div className="mt-1">
-                  <Rating
-                    name="size-small"
-                    value={isFirstPlayer ? ratingVideo1 : ratingVideo2}
-                    onChange={(event, newValue) => {
-                      if (newValue !== null) {
-                        ratedVideo(newValue, isFirstPlayer ? firstVideoData : secondVideoData, isFirstPlayer ? 1 : 2);
-                      }
-                    }}
-                    precision={1}
-                    size="small"
-                  />
-                </div>
+                {user?.id && (
+                  <div className="mt-1">
+                    <Rating
+                      name="size-small"
+                      value={isFirstPlayer ? firstVideoData?.video?.rating : secondVideoData?.video?.rating}
+                      onChange={(event, newValue) => {
+                        if (newValue !== null) {
+                          ratedVideo(newValue, isFirstPlayer ? firstVideoData : secondVideoData, isFirstPlayer ? 1 : 2);
+                        }
+                      }}
+                      precision={1}
+                      size="small"
+                    />
+                  </div>
+                )}
               </div>
             </div>
             <div className="absolute bottom-3 right-0 py-2 px-3 flex items-center justify-between">
@@ -304,15 +249,25 @@ export const LiveScreen = () => {
                 </button>
                 <button
                   onClick={toggleFullScreen}
-                  className="text-black hover:cursor bg-white rounded-full p-1 bg-opacity-50"
+                  className="text-black hover:cursor mr-3 bg-white rounded-full p-1 bg-opacity-50"
                 >
                   <Icon
-                    path={!isFullScreen ? mdiArrowExpand : mdiArrowCollapse}
+                    path={!isFullScreen ? mdiFullscreen : mdiFullscreenExit}
                     size={0.6}
                   />
                 </button>
               </div>
             </div>
+            {isMuted && (
+              <div className="absolute bottom-16 left-0 right-0 flex justify-center">
+                <button
+                  onClick={toggleMute}
+                  className="text-white bg-red-600 hover:bg-red-700 rounded-full px-4 py-2"
+                >
+                  Activar sonido
+                </button>
+              </div>
+            )}
           </div>
 
           <video
@@ -320,9 +275,10 @@ export const LiveScreen = () => {
             id="player1"
             autoPlay
             preload="auto"
+            muted={isMuted}
             style={{ objectFit: "cover" }}
-            className={`w-full h-full rounded-lg ${isFirstPlayer ? 'block' : 'hidden'}`}
-            src={`../../anime/${firstFileUrl}`}
+            className={`w-full md:h-full rounded-lg ${isFirstPlayer ? 'block' : 'hidden'}`}
+            src={`../../anime/${firstVideoData?.video?.file_name}`}
           >
             Your browser does not support the video tag.
           </video>
@@ -332,16 +288,46 @@ export const LiveScreen = () => {
             id="player2"
             autoPlay
             preload="auto"
+            muted={isMuted}
             style={{ objectFit: "cover" }}
-            className={`w-full h-full rounded-lg ${isFirstPlayer ? 'hidden' : 'block'}`}
-
-            src={`../../anime/${secondFileUrl}`}
+            className={`w-full md:h-full rounded-lg ${isFirstPlayer ? 'hidden' : 'block'}`}
+            src={`../../anime/${secondVideoData?.video?.file_name}`}
           >
             Your browser does not support the video tag.
           </video>
 
         </div>
-      </section>
-    </>
+        <div className="p-2 md:hidden">
+          <Rating
+            name="size-small"
+            value={isFirstPlayer ? firstVideoData?.video?.rating : secondVideoData?.video?.rating}
+            onChange={(event, newValue) => {
+              if (newValue !== null) {
+                ratedVideo(newValue, isFirstPlayer ? firstVideoData : secondVideoData, isFirstPlayer ? 1 : 2);
+              }
+            }}
+            className="bg-white p-2 rounded-md mt-2 bg-opacity-25"
+            precision={1}
+            size="small"
+          />
+          <div className="text-white mt-3">
+            <div className="flex items-center">
+              <Icon path={mdiMusicCircleOutline} size={0.6} />
+              <p className="font-bold text-[1.3em] ml-1">
+                {isFirstPlayer ? firstVideoData?.video?.anime : secondVideoData?.video?.anime}
+              </p>
+            </div>
+            <p className="opacity-50">
+              {isFirstPlayer ? firstVideoData?.video?.title : secondVideoData?.video?.title}
+            </p>
+          </div>
+        </div>
+      </div>
+      {alertVisible && (
+        <Alert severity="error" onClose={() => setAlertVisible(false)}>
+          Error occurred. Please try again later.
+        </Alert>
+      )}
+    </section>
   );
 };
