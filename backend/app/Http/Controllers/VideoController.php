@@ -16,146 +16,100 @@ class VideoController extends Controller
 {
     public function getCurrentVideo($userId)
     {
-        $user_Id = $userId ? intval($userId) : null;
-        Log::info('User parameter:', ['userId' => $userId]);
-
+        // Obtén el video que se está reproduciendo actualmente
         $playingCurrent = PlayingSong::first();
+        $ratingCurrent = 0;
+        $ratingNext = 0;
+        $secondsElapsed = 0;
 
-        if ($playingCurrent) {
-            $secondsElapsed = now()->diffInSeconds($playingCurrent->created_at);
-    
-            if ($secondsElapsed > 260) {
-                PlayingSong::where('id', $playingCurrent->id)->delete();
-                $secondsElapsed = 0;
-                $nextPlaying = PlayingSong::first();
-                if ($nextPlaying) {
-                    $nextSecondsElapsed = now()->diffInSeconds($nextPlaying->created_at);
-    
-                    if ($nextSecondsElapsed > 260) {
-                        PlayingSong::where('id', $nextPlaying->id)->delete();
-                        $video = Video::inRandomOrder()->first();
-    
-                        if (!$video) {
-                            Log::error('No videos found in the database.');
-                            return response()->json(['success' => false, 'message' => 'No videos found'], 404);
-                        }
-    
-                        PlayingSong::create([
-                            'song_id' => $video->id,
-                            'playing' => 1,
-                        ]);
-                    } else {
-                        $nextPlaying->playing = 1;
-                        $nextPlaying->save();
-                        $video = Video::find($nextPlaying->song_id);
-                    }
-                } else {
-                    $video = Video::inRandomOrder()->first();
-    
-                    if (!$video) {
-                        Log::error('No videos found in the database.');
-                        return response()->json(['success' => false, 'message' => 'No videos found'], 404);
-                    }
-    
-                    PlayingSong::create([
-                        'song_id' => $video->id,
-                        'playing' => 1,
-                    ]);
-                }
-            } else {
-                $video = Video::find($playingCurrent->song_id);
-            }
+        if (isset($playingCurrent)) {
+            $video = Video::where('id', $playingCurrent->song_id)->first();
+            $secondsElapsed = now()->diffInSeconds($playingCurrent->updated_at);
+            $nextVideoResponse = $this->getNextVideo();
+            $nextVideo = $nextVideoResponse->getData()->video;
         } else {
             $video = Video::inRandomOrder()->first();
-            
-            if (!$video) {
-                Log::error('No videos found in the database.');
-                return response()->json(['success' => false, 'message' => 'No videos found'], 404);
-            }
+
             PlayingSong::create([
                 'song_id' => $video->id,
                 'playing' => 1,
             ]);
 
-            $secondsElapsed = 0;
+            $nextVideoResponse = $this->getNextVideo();
+            $nextVideo = $nextVideoResponse->getData()->video;
         }
 
-        $rating = 0;
-
-        if ($user_Id !== null) {
-            $videoReview = VideoReview::where('user_id', $user_Id)
+        if ($userId !== null) {
+            $videoReviewCurrent = VideoReview::where('user_id', $userId)
                 ->where('video_id', $video->id)
                 ->first();
-            
-            $rating = $videoReview ? $videoReview->rating : 0;
+            $ratingCurrent = $videoReviewCurrent ? $videoReviewCurrent->rating : 0;
+
+            $videoReviewNext = VideoReview::where('user_id', $userId)
+                ->where('video_id', $nextVideo->id)
+                ->first();
+            $ratingNext = $videoReviewNext ? $videoReviewNext->rating : 0;
         }
 
-        $video->rating = $rating;
-
-        return response()->json([
+        $response = [
             'success' => true,
-            'video' => $video,
-            'seconds_elapsed' => $secondsElapsed
-        ]);
+            'currentVideo' => $video,
+            'seconds_elapsed' => $secondsElapsed,
+            'ratingCurrent' => $ratingCurrent,
+            'nextVideo' => $nextVideo,
+            'ratingNext' => $ratingNext,
+        ];
+
+        return response()->json($response);
     }
 
-    public function getNextVideo($userId)
+    public function getNextVideo()
     {
-        $user_Id = $userId ? intval($userId) : null;
-        Log::info('User parameter:', ['userId' => $userId]);
-    
-        $playingCurrent = PlayingSong::get();
-        if ($playingCurrent->count() > 1) {
-            $nextSongId = $playingCurrent[1]->song_id;
-            $video = Video::find($nextSongId);
-        } else {
-            $video = Video::where('id', '!=', $playingCurrent->first()->song_id ?? null)->inRandomOrder()->first();
-            
+        $getVideosPlaying = PlayingSong::get();
+
+        if (count($getVideosPlaying) === 1) {
+            $video = Video::where('id', '!=', $getVideosPlaying->first()->song_id ?? null)->inRandomOrder()->first();
+
             PlayingSong::create([
                 'song_id' => $video->id,
                 'playing' => 0,
             ]);
-
-            if (!$video) {
-                Log::error('No videos found in the database.');
-                return response()->json(['success' => false, 'message' => 'No videos found'], 404);
-            }
+        } else {
+            $nextVideo = $getVideosPlaying->where('playing', 0)->first();
+            $video = Video::where('id', $nextVideo->song_id)->first();
         }
-    
-        $rating = 0;
-    
-        if ($user_Id !== null) {
-            $videoReview = VideoReview::where('user_id', $user_Id)
-                ->where('video_id', $video->id)
-                ->first();
-            
-            $rating = $videoReview ? $videoReview->rating : 0;
-        }
-    
-        $video->rating = $rating;
-    
         return response()->json([
             'success' => true,
             'video' => $video,
         ]);
     }
 
-    public function currentVideoEnded()
+    public function currentVideoEnded($videoId)
     {
-        $playingSongs = PlayingSong::orderBy('created_at', 'asc')->get();
+        DB::beginTransaction();
 
-        if ($playingSongs->count() >= 2) {
-            $firstPlayingSong = $playingSongs->first();
+        try {
+            $currentVideo = PlayingSong::where('song_id', $videoId)
+                ->where('playing', 1)
+                ->first();
 
-            $secondPlayingSong = $playingSongs->skip(1)->first();
-            $secondsElapsed = now()->diffInSeconds($firstPlayingSong->created_at);
+            if ($currentVideo && now()->diffInSeconds($currentVideo->updated_at) > 10) {
+                $currentVideo->delete();
 
-            if ($secondsElapsed <= 15) {
-                $this->updateSecondPlayingSong($secondPlayingSong);
-            } else {
-                $firstPlayingSong->delete();
-                $this->updateSecondPlayingSong($secondPlayingSong);
+                $nextSong = PlayingSong::where('playing', 0)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($nextSong) {
+                    $nextSong->playing = 1;
+                    $nextSong->save();
+                }
             }
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
         }
     }
 
@@ -200,27 +154,23 @@ class VideoController extends Controller
     public function getVideosQueue(Request $request)
     {
         $userId = $request->input('user_id');
-    
-        // Obtener todos los videos excepto los subidos por el usuario con el ID proporcionado
+
         $videos = Video::where('user_id', '!=', $userId)->get();
-    
-        // Obtener las listas de reproducción del usuario
+
         $playlists = DB::table('playlists')
             ->where('user_id', $userId)
             ->get();
-    
-        // Para cada lista de reproducción, obtener los videos asociados
+
         foreach ($playlists as $playlist) {
             $playlistVideos = DB::table('playlist_video')
                 ->join('videos', 'playlist_video.video_id', '=', 'videos.id')
                 ->where('playlist_video.playlist_id', $playlist->id)
                 ->select('videos.*')
                 ->get();
-    
+
             $playlist->videos = $playlistVideos;
         }
-    
-        // Devolver la lista de videos y listas de reproducción en formato JSON
+
         return response()->json([
             'videos' => $videos,
             'playlists' => $playlists,
@@ -233,14 +183,14 @@ class VideoController extends Controller
             'user_id' => 'required|integer',
             'video_id' => 'required|integer',
         ]);
-    
+
         $userId = $request->input('user_id');
         $videoId = $request->input('video_id');
-    
+
         $rating = VideoReview::where('user_id', $userId)
-                             ->where('video_id', $videoId)
-                             ->first();
-    
+            ->where('video_id', $videoId)
+            ->first();
+
         return response()->json([
             'success' => true,
             'rating' => $rating ? $rating->rating : 0,
@@ -250,15 +200,15 @@ class VideoController extends Controller
     public function addVideoToPlaylist(Request $request)
     {
         $videoIds = $request->input('data.id_videos');
-        
+
         $playlistId = $request->input('data.id_playlist');
-        
+
         $addedVideos = [];
         foreach ($videoIds as $videoId) {
             $exists = PlaylistVideo::where('video_id', $videoId)
                 ->where('playlist_id', $playlistId)
                 ->exists();
-            
+
             if (!$exists) {
                 $playlistVideo = new PlaylistVideo();
                 $playlistVideo->video_id = $videoId;
@@ -279,7 +229,7 @@ class VideoController extends Controller
         // header("Access-Control-Allow-Origin: *");
         // header("Access-Control-Allow-Methods: *");
         // header("Access-Control-Allow-Headers: *");
-        
+
         $request->validate([
             'user_id' => 'required|integer',
             'playlist_name' => 'required|string|max:255',

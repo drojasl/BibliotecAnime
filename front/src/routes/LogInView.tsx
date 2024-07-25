@@ -135,9 +135,6 @@ const ProfileScreen = () => {
       };
 
       const response = await axios.post(`${apiUrl}/signup`, requestData);
-
-      console.log(response?.data?.message);
-
       setAlertMessageSignUp(response?.data?.message);
       setlertSignUpSeverity("success");
       setShowAlertSignUp(true);
@@ -201,14 +198,6 @@ const ProfileScreen = () => {
       }
     }
   };
-  function onSignIn(googleUser) {
-    var profile = googleUser.getBasicProfile();
-    console.log("ID: " + profile.getId()); // Do not send to your backend! Use an ID token instead.
-    console.log("Name: " + profile.getName());
-    console.log("Image URL: " + profile.getImageUrl());
-    console.log("Email: " + profile.getEmail()); // This is null if the 'email' scope is not present.
-  }
-
   return (
     <div className="text-white flex justify-center items-center flex-col py-5 h-full">
       {isLogInView ? (

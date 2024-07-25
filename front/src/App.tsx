@@ -18,7 +18,7 @@ const App = () => {
       <section className="layout h-[100vh] md:flex">
         {!isLoginRoute && (
           <header className="head h-[10%] md:h-[100%] flex justify-start relative w-[6vw]">
-            <div className="justify-between fixed h-[100vh] absolute z-[10]">
+            <div className="justify-between fixed h-[100vh] absolute z-[11]">
               <Navbar />
             </div>
           </header>
@@ -29,7 +29,6 @@ const App = () => {
             <Route path='/live' element={<LiveScreen />} />
             <Route path='/explore' element={<ExploreScreen />} />
             <Route path='/upload' element={<PrivateRoute><VideoUploadScreen /></PrivateRoute>} />
-            <Route path='/profile' element={<PrivateRoute><ProfileScreen /></PrivateRoute>} />
             <Route path='/profile/:username' element={<PrivateRoute><ProfileScreen /></PrivateRoute>} />
             <Route path='/login' element={<LogInScreen />} />
             <Route path='/signup' element={<LogInScreen />} />

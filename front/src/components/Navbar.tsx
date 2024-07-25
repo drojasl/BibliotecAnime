@@ -195,7 +195,7 @@ export const Navbar = () => {
       </div>
 
       {showMobileMenu && (
-        <div className="bg-white h-[100vh] w-[100vw]">
+        <div className="bg-white h-[100vh] w-[100vw] ">
           <div className="flex flex-col items-start p-5">
             <Link to="/" className="my-2" onClick={() => setShowMobileMenu(false)}>
               Home

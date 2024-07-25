@@ -105,7 +105,6 @@ const ExploreScreen = () => {
           },
         }
       );
-      console.log(response);
       setVideos(response.data.videos);
       setPlaylists(response.data.playlists);
     } catch (error) {
@@ -170,7 +169,6 @@ const ExploreScreen = () => {
           },
         }
       );
-      console.log(response);
     } catch (error) {
       console.error("Error en la solicitud POST", error);
     }

@@ -29,7 +29,7 @@ Route::post('/updateVideo', [dataController::class, 'updateVideoData']);
 //? VIDEOS DATA
 Route::get('/current/{userId}', [videoController::class, 'getCurrentVideo']);
 Route::get('/next/{userId}', [videoController::class, 'getNextVideo']);
-Route::get('/currentEnded',[videoController::class, 'currentVideoEnded']);
+Route::get('/currentEnded/{videoId}',[videoController::class, 'currentVideoEnded']);
 Route::post('/setRatingVideo', [videoController::class, 'setRatingVideo']);
 Route::post('/getVideosQueue',  [videoController::class, 'getVideosQueue']);
 Route::post('/getVideoRating', [videoController::class, 'getVideoRating']);
