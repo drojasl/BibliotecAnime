@@ -1,17 +1,14 @@
 import Icon from "@mdi/react";
 import {
-  mdiApple,
-  mdiFacebook,
-  mdiGoogle,
   mdiEyeOutline,
   mdiEyeOffOutline,
 } from "@mdi/js";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import Alert from "@mui/material/Alert";
-import { GoogleLogin } from "@react-oauth/google";
-import { jwtDecode } from "jwt-decode";
-import { Route, Routes, Navigate, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+
+type CustomAlertColor = 'success' | 'info' | 'warning' | 'error';
 
 const ProfileScreen = () => {
   const apiUrl = import.meta.env.VITE_APP_API_URL;
@@ -23,10 +20,10 @@ const ProfileScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showRepPassword, setShowRepPassword] = useState(false);
   const [alertMessageLogIn, setAlertMessageLogIn] = useState("");
-  const [alertLogInSeverity, setAlertLogInSeverity] = useState("success");
+  const [alertLogInSeverity, setAlertLogInSeverity] = useState<CustomAlertColor>('success');
   const [showAlertLogIn, setShowAlertLogIn] = useState(false);
   const [alertMessageSignUp, setAlertMessageSignUp] = useState("");
-  const [alertSignUpSeverity, setlertSignUpSeverity] = useState("success");
+  const [alertSignUpSeverity, setAlertSignUpSeverity] = useState<CustomAlertColor>('success');
   const [showAlertSignUp, setShowAlertSignUp] = useState(false);
   const [loginData, setLoginData] = useState({
     email: "",
@@ -110,7 +107,7 @@ const ProfileScreen = () => {
       localStorage.setItem("loggedUser", loggedUserString);
 
       window.location.href = `/profile/${nick_name}`;
-    } catch (error) {
+    } catch (error: any) {
       setAlertMessageLogIn(error?.response?.data?.message);
       setAlertLogInSeverity("warning");
       setShowAlertLogIn(true);
@@ -123,7 +120,7 @@ const ProfileScreen = () => {
       // Validar si password y passwordRep son iguales
       if (signUpData.password !== signUpData.passwordRep) {
         setAlertMessageSignUp("Las contraseñas no coinciden");
-        setlertSignUpSeverity("error");
+        setAlertSignUpSeverity("error");
         setShowAlertSignUp(true);
         return;
       }
@@ -136,7 +133,7 @@ const ProfileScreen = () => {
 
       const response = await axios.post(`${apiUrl}/signup`, requestData);
       setAlertMessageSignUp(response?.data?.message);
-      setlertSignUpSeverity("success");
+      setAlertSignUpSeverity("success");
       setShowAlertSignUp(true);
 
       const { email, roles, id, nick_name } = response.data.user;
@@ -153,51 +150,13 @@ const ProfileScreen = () => {
       localStorage.setItem("loggedUser", loggedUserString);
 
       window.location.href = "/";
-    } catch (error) {
+    } catch (error: any) {
       setAlertMessageSignUp(error?.response?.data?.message);
-      setlertSignUpSeverity("warning");
+      setAlertSignUpSeverity("warning");
       setShowAlertSignUp(true);
     }
   };
 
-  const authUserGoogle = async (response: any, path: string) => {
-    const responseDecoded = jwtDecode(response?.credential);
-
-    if (path == "login") {
-      try {
-        const requestData = {
-          email: responseDecoded?.email,
-        };
-
-        const response = await axios.post(
-          `${apiUrl}/login/google`,
-          requestData
-        );
-        setAlertMessageLogIn(response?.data?.message);
-        setAlertLogInSeverity("success");
-        setShowAlertLogIn(true);
-
-        const { email, roles, id, nick_name } = response.data.user;
-
-        const loggedUser = {
-          email,
-          roles,
-          id,
-          nick_name,
-        };
-
-        const loggedUserString = JSON.stringify(loggedUser);
-
-        localStorage.setItem("loggedUser", loggedUserString);
-
-        window.location.href = "/";
-      } catch (error) {
-        setAlertMessageLogIn(error?.response?.data?.message);
-        setAlertLogInSeverity("warning");
-        setShowAlertLogIn(true);
-      }
-    }
-  };
   return (
     <div className="text-white flex justify-center items-center flex-col py-5 h-full">
       {isLogInView ? (
@@ -247,14 +206,15 @@ const ProfileScreen = () => {
                   type={showPassword ? "text" : "password"}
                   className="w-full px-1 py-2 bg-[#212121] rounded-md pl-8"
                 />
-                <Icon
-                  path={showPassword ? mdiEyeOutline : mdiEyeOffOutline}
-                  size={0.6}
-                  className="text-white absolute top-1/2 transform -translate-y-1/2 right-2 hover:cursor-pointer"
-                  onClick={() => {
-                    togglePasswordVisibility();
-                  }}
-                />
+                <div onClick={() => {
+                  togglePasswordVisibility();
+                }}>
+                  <Icon
+                    path={showPassword ? mdiEyeOutline : mdiEyeOffOutline}
+                    size={0.6}
+                    className="text-white absolute top-1/2 transform -translate-y-1/2 right-2 hover:cursor-pointer"
+                  />
+                </div>
               </div>
             </div>
             <div className="mt-3 w-[20em]">
@@ -269,37 +229,6 @@ const ProfileScreen = () => {
               >
                 Let's go
               </button>
-            </div>
-            <div className="mt-3 flex items-center">
-              <hr className="w-[40%]" />
-              <p className="w-[20%] text-center small">OR</p>
-              <hr className="w-[40%]" />
-            </div>
-            <div className="mt-3 flex items-center justify-evenly">
-              <GoogleLogin
-                onSuccess={(credentialResponse) => {
-                  authUserGoogle(credentialResponse, "login");
-                }}
-                onError={() => {
-                  setShowAlertLogIn(true);
-                  setAlertLogInSeverity("Error");
-                  setAlertMessageLogIn("Login Failed");
-                }}
-              />
-              {/* <a href="">
-                <div className="bg-[#EDF2F8] p-2 rounded-full">
-                  <Icon
-                    path={mdiFacebook}
-                    size={0.6}
-                    className="text-[#4E7CBF]"
-                  />
-                </div>
-              </a>
-              <a href="">
-                <div className="bg-[#E9E9E9] p-2 rounded-full">
-                  <Icon path={mdiApple} size={0.6} className="text-[#212121]" />
-                </div>
-              </a> */}
             </div>
           </div>
         </>
@@ -363,14 +292,15 @@ const ProfileScreen = () => {
                   type={showPassword ? "text" : "password"}
                   className="w-full px-1 py-2 bg-[#212121] rounded-md pl-8"
                 />
-                <Icon
-                  path={showPassword ? mdiEyeOutline : mdiEyeOffOutline}
-                  size={0.6}
-                  className="text-white absolute top-1/2 transform -translate-y-1/2 right-2 hover:cursor-pointer"
-                  onClick={() => {
-                    togglePasswordVisibility();
-                  }}
-                />
+                <div onClick={() => {
+                  togglePasswordVisibility();
+                }}>
+                  <Icon
+                    path={showPassword ? mdiEyeOutline : mdiEyeOffOutline}
+                    size={0.6}
+                    className="text-white absolute top-1/2 transform -translate-y-1/2 right-2 hover:cursor-pointer"
+                  />
+                </div>
               </div>
             </div>
             <div className="mt-3 relative">
@@ -384,12 +314,14 @@ const ProfileScreen = () => {
                   type={showRepPassword ? "text" : "password"}
                   className="w-full px-1 py-2 bg-[#212121] rounded-md pl-8"
                 />
-                <Icon
-                  path={showRepPassword ? mdiEyeOutline : mdiEyeOffOutline}
-                  size={0.6}
-                  className="text-white absolute top-1/2 transform -translate-y-1/2 right-2 hover:cursor-pointer"
-                  onClick={toggleRepeatPasswordVisibility}
-                />
+                <div onClick={toggleRepeatPasswordVisibility}
+                >
+                  <Icon
+                    path={showRepPassword ? mdiEyeOutline : mdiEyeOffOutline}
+                    size={0.6}
+                    className="text-white absolute top-1/2 transform -translate-y-1/2 right-2 hover:cursor-pointer"
+                  />
+                </div>
               </div>
             </div>
             <div className="mt-3 ">

@@ -139,7 +139,7 @@ export const Navbar = () => {
               </div>
             </Link>
           ) : (
-            <div className="relative">
+            <div className="relative" style={{ zIndex: 1000 }}>
               <div
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
                 className="hover:bg-white hover:bg-opacity-50 relative text-white rounded-full flex justify-center items-center p-1 max-w-min"
@@ -165,7 +165,7 @@ export const Navbar = () => {
                 </div>
               </div>
               {showProfileMenu && (
-                <div className="absolute bg-white text-black rounded shadow-lg mt-1 bottom-[5em] whitespace-nowrap">
+                <div className="absolute bg-white text-black rounded shadow-lg mt-1 bottom-[5em] whitespace-nowrap" >
                   <Link
                     to={`/profile/${nickName}`}
                     onClick={() => setShowProfileMenu(false)}
@@ -223,7 +223,6 @@ export const Navbar = () => {
 
       <Tooltip
         id="toolTip"
-        effect="solid"
         place="top"
         style={{
           backgroundColor: "white",

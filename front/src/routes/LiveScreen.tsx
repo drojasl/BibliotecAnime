@@ -176,7 +176,7 @@ export const LiveScreen = () => {
                 <Rating
                   name="size-small"
                   value={isFirstPlayer ? parseFloat(ratingFirst) : parseFloat(ratingSecond)}
-                  onChange={(event, newValue) => {
+                  onChange={(_, newValue) => {
                     if (newValue !== null) {
                       ratedVideo(newValue, isFirstPlayer ? firstVideoData : secondVideoData, isFirstPlayer ? 1 : 2);
                     }

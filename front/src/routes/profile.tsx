@@ -103,7 +103,7 @@ const ProfileScreen = () => {
           timer: 2500,
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving profile:", error?.response?.data?.message);
       Swal.fire({
         position: "top-end",
@@ -246,7 +246,7 @@ const ProfileScreen = () => {
 
   const createNewPlaylist = async () => {
     try {
-      const response = await axios.post(
+      await axios.post(
         `${apiUrl}/createNewPlaylist`,
         {
           user_id: userId,
@@ -462,7 +462,9 @@ const ProfileScreen = () => {
               <div className="w-full px-3">
                 <div className="h-[50%] flex items-center justify-between">
                   <p>{playlist.name}</p>
-                  <Icon path={mdiDotsHorizontal} size={0.6} onClick={() => togglePlaylistMenu(playlist)} className="cursor-pointer" />
+                  <div onClick={() => togglePlaylistMenu(playlist)} >
+                    <Icon path={mdiDotsHorizontal} size={0.6} className="cursor-pointer" />
+                  </div>
                 </div>
                 <hr />
                 <div className="h-[50%] flex items-center">

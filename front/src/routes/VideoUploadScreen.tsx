@@ -6,8 +6,7 @@ import Alert from "@mui/material/Alert";
 
 const VideoUploadScreen = () => {
   const [selectedFile, setSelectedFile] = useState<any>(null);
-  const [videoPreviewUrl, setVideoPreviewUrl] = useState("");
-  const [isVideoPlayable, setIsVideoPlayable] = useState(false);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<any>("");
   const [isLoading, setIsLoading] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
   const [sendingData, setSendingData] = useState(false);
@@ -24,7 +23,7 @@ const VideoUploadScreen = () => {
   const [animeType, setAnimeType] = useState("");
   const [number, setNumber] = useState("");
   const [version, setVersion] = useState("");
-  const [alertSeverity, setAlertSeverity] = useState('info');
+  const [alertSeverity, setAlertSeverity] = useState<any>('info');
   const [alertMessage, setAlertMessage] = useState("");
   const [releaseYear, setReleaseYear] = useState("");
   const [lyrics, setLyrics] = useState("");
@@ -86,21 +85,20 @@ const VideoUploadScreen = () => {
 
   useEffect(() => {
     if (videoPreviewUrl) {
-      setIsVideoPlayable(false);
-      const videoPlayer = document.getElementById("previewPlayer");
+      const videoPlayer = document.getElementById("previewPlayer") as HTMLVideoElement;
 
       if (videoPlayer) {
         videoPlayer.src = videoPreviewUrl;
 
         videoPlayer.onplaying = () => {
           setIsLoading(false);
-          setIsVideoPlayable(true);
         };
 
         videoPlayer.play();
       }
     }
   }, [videoPreviewUrl]);
+
 
   const handleInformationChange = (event: any, data: string) => {
     const value = event.target.value;
@@ -160,7 +158,7 @@ const VideoUploadScreen = () => {
       'songName': songName,
       'animeName': animeName,
     }).forEach(([key, value]) => {
-      formData.append(key, value);
+      formData.append(key, String(value));
     });
 
     axios
@@ -169,12 +167,12 @@ const VideoUploadScreen = () => {
           'Content-Type': 'multipart/form-data',
         },
       })
-      .then((response) => {
+      .then(() => {
         setShowAlert(true);
         setAlertMessage('Video uploaded successfully!!');
         setAlertSeverity('success');
       })
-      .catch((error) => {
+      .catch(() => {
         setShowAlert(true);
         setAlertMessage('An error occurred while uploading the video, please try again');
         setAlertSeverity('warning');
@@ -183,6 +181,7 @@ const VideoUploadScreen = () => {
         setSendingData(false);
       });
   };
+
 
   useEffect(() => {
     if (showAlert) {

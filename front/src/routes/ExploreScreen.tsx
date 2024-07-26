@@ -17,6 +17,12 @@ import TextField from '@mui/material/TextField';
 import Textarea from '@mui/joy/Textarea';
 import MenuItem from '@mui/material/MenuItem';
 
+interface Video {
+  id: number;
+  user_id: number;
+  file_name: string;
+}
+
 const style = {
   position: 'absolute',
   height: '80%',
@@ -34,22 +40,20 @@ const style = {
 
 const ExploreScreen = () => {
   const apiUrl = import.meta.env.VITE_APP_API_URL;
-  const [videos, setVideos] = useState([]);
+  const [videos, setVideos] = useState<Video[]>([]);
   const [playlists, setPlaylists] = useState<any>([]);
   const [videoPlayingRoute, setVideoPlayingRoute] = useState("");
-  const [selectedSong, setSelectedSong] = useState("");
   const [viewPlayingVideo, setViewPlayingVideo] = useState(false);
   const [playingVideoTitle, setPlayingVideoTitle] = useState("");
   const [playingVideoAnime, setPlayingVideoAnime] = useState("");
   const [selectedVideo, setSelectedVideo] = useState();
-  const [isMuted, setIsMuted] = useState(false);
   const [showAddPlaylists, setShowAddPlaylists] = useState(false);
   const [hiddenView, setHiddenView] = useState(false);
   const [ratingValue, setRatingValue] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [userId, setUserId] = useState(0);
   const [isSelectingVideos, setIsSelectingVideos] = useState(false);
-  const [selectedVideos, setSelectedVideos] = useState([]);
+  const [selectedVideos, setSelectedVideos] = useState<any>([]);
   const [currentPlaylistId, setCurrentPlaylistId] = useState(null);
   const videoPlayer1 = useRef<any>(null);
   const [newPlaylistName, setNewPlaylistName] = useState("");
@@ -144,11 +148,6 @@ const ExploreScreen = () => {
     setVideoPlayingRoute(video.file_name);
   };
 
-  const addSongToPlaylist = (id_song: any) => {
-    setShowAddPlaylists(true);
-    setSelectedSong(id_song);
-  };
-
   const ratedVideo = async (rating: number, id: any) => {
     setRatingValue(rating);
     const videoData = {
@@ -158,7 +157,7 @@ const ExploreScreen = () => {
     };
 
     try {
-      const response = await axios.post(
+      await axios.post(
         `${apiUrl}/setRatingVideo`,
         {
           data: videoData,
@@ -183,7 +182,7 @@ const ExploreScreen = () => {
     };
 
     try {
-      const response = await axios.post(
+      await axios.post(
         `${apiUrl}/addSongToPlaylist`,
         {
           data: playlistData,
@@ -229,7 +228,7 @@ const ExploreScreen = () => {
 
   const createNewPlaylist = async () => {
     try {
-      const response = await axios.post(
+      await axios.post(
         `${apiUrl}/createNewPlaylist`,
         {
           user_id: userId,
@@ -264,10 +263,12 @@ const ExploreScreen = () => {
   const openEditModal = (videoId: any) => {
     const videoToEdit = videos.find(video => video.id === videoId);
 
-    setActualSongUserId(videoToEdit?.user_id)
-    setOriginalFile(videoToEdit?.file_name)
-    setEditableVideoData(videoToEdit);
-    setShowEditModal(true);
+    if (videoToEdit) {
+      setActualSongUserId(videoToEdit?.user_id)
+      setOriginalFile(videoToEdit?.file_name)
+      setEditableVideoData(videoToEdit);
+      setShowEditModal(true);
+    }
   };
 
   const closeEditModal = () => {
@@ -303,7 +304,7 @@ const ExploreScreen = () => {
       formData.append(key, value);
     });
     try {
-      const response = await axios.post(
+      await axios.post(
         `${apiUrl}/updateVideo`,
         formData,
         {
@@ -354,13 +355,13 @@ const ExploreScreen = () => {
         <div className={`col-span-12 ${userId > 0 ? 'md:col-span-9' : 'md:col-span-12'} flex flex-wrap`}>
           <p className="font-bold text-[1.4em] w-full mb-4">Explore Recommended Videos</p>
           {Array.isArray(filteredVideos) &&
-            filteredVideos.map((video, index) => (
+            filteredVideos.map((video: any, index) => (
               < div key={index} className="my-2 px-2 w-full sm:w-1/2 lg:w-1/3 xl:w-1/4 relative" >
                 {isSelectingVideos && (
                   <input
                     type="checkbox"
                     className="absolute top-2 left-5 z-10 appearance-none h-5 w-5 rounded-full border-2 border-gray-300 checked:bg-[#483EA8] checked:border-transparent focus:outline-none"
-                    checked={selectedVideos.includes(video.id)}
+                    checked={selectedVideos.includes(video?.id)}
                     onChange={() => handleVideoSelect(video.id)}
                   />
 
@@ -430,14 +431,14 @@ const ExploreScreen = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="hover:cursor-pointer">
+                    <div className="hover:cursor-pointer" onClick={() => {
+                      setIsSelectingVideos(true);
+                      setCurrentPlaylistId(playlist?.id);
+                    }}>
                       <Icon
                         path={mdiMusicNotePlus}
                         size={1}
-                        onClick={() => {
-                          setIsSelectingVideos(true);
-                          setCurrentPlaylistId(playlist?.id);
-                        }}
+
                       />
                     </div>
                   </div>
@@ -523,7 +524,7 @@ const ExploreScreen = () => {
                 {userId > 0 && (
                   <div
                     className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors duration-300 shadow-md mr-3 hover:cursor-pointer"
-                    onClick={() => addSongToPlaylist(selectedVideo)}
+                    onClick={() => setShowAddPlaylists(true)}
                   >
                     <p>Add to playlist</p>
                   </div>
@@ -550,8 +551,7 @@ const ExploreScreen = () => {
                 }}
                 controls
                 autoPlay
-                muted={isMuted}
-                onEnded={() => setIsPlayingVideo(false)}
+                onEnded={() => setViewPlayingVideo(false)}
               /><div className="hidden md:flex absolute top-3 left-0 bg-black rounded-lg py-2 mx-3 px-3 bg-opacity-50 flex items-center justify-between text-white">
                 <div>
                   <div className="flex items-center">
@@ -571,7 +571,7 @@ const ExploreScreen = () => {
                         name="video-rating"
                         value={ratingValue}
                         className="mt-2"
-                        onChange={(event, newValue) => {
+                        onChange={(_, newValue: any) => {
                           ratedVideo(newValue, selectedVideo);
                         }}
                       />
