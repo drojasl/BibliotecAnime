@@ -70,6 +70,11 @@ class userController extends Controller
 
     public function signUp(Request $request)
     {
+
+        // header("Access-Control-Allow-Origin: *");
+        // header("Access-Control-Allow-Methods: *");
+        // header("Access-Control-Allow-Headers: *");
+
         // Validate the form data
         $request->validate([
             'email' => 'required|email',
@@ -186,6 +191,4 @@ class userController extends Controller
 
         return response()->json(['message' => 'Successfully updated user', 'user' => $user]);
     }
-
-    
 }
