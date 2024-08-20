@@ -21,13 +21,12 @@ return new class extends Migration
             $table->string('type')->nullable();
             $table->string('format')->nullable();
             $table->string('title')->nullable();
-            $table->string('title_alt')->nullable();
             $table->unsignedBigInteger('artist')->nullable();
-            $table->unsignedBigInteger('language')->nullable();
+            $table->string('language')->nullable();
             $table->string('year')->nullable();
             $table->string('number')->nullable();
             $table->string('version')->nullable();
-            $table->text('lyrics')->nullable();
+            $table->longText('cover')->nullable();
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');

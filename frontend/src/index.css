@@ -1,0 +1,12 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+body {
+  background-color: #000000;
+  font-size: 14px;
+}
+
+.MuiRating-icon {
+  color: #faaf00 !important;
+}

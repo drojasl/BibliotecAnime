@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\User;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use App\Models\User;
 
 class userController extends Controller
 {
@@ -70,11 +69,6 @@ class userController extends Controller
 
     public function signUp(Request $request)
     {
-
-        // header("Access-Control-Allow-Origin: *");
-        // header("Access-Control-Allow-Methods: *");
-        // header("Access-Control-Allow-Headers: *");
-
         // Validate the form data
         $request->validate([
             'email' => 'required|email',
@@ -106,6 +100,8 @@ class userController extends Controller
 
         // Create new user
         $user = new User();
+        $user->name = 'Alejandro Ospina Rojas'; //TODO
+        $user->token = Str::random(61);
         $user->email = $email;
         $user->nick_name = $username;
         $user->password = bcrypt($password);
@@ -154,27 +150,49 @@ class userController extends Controller
         return response()->json(['message' => 'User not found'], 404);
     }
 
-    /**
-     * Validate if a username is available.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
-     */
+    public function updateProfile(Request $request, $token)
+    {
+        $validated = $request->validate([
+            'profilePic' => 'nullable|string',
+            'cover' => 'nullable|string',
+            'name' => 'nullable|string',
+            'userName' => 'nullable|string',
+        ]);
+
+        $user = User::where('token', $token)->first();
+
+        if ($user) {
+            $user->profile_pic = $validated['profilePic'];
+            $user->cover_photo = $validated['cover'];
+            $user->name = $validated['name'];
+            $user->nick_name = $validated['userName'];
+            $user->save();
+
+            return response()->json([
+                'message' => 'Profile updated successfully',
+                'user' => $user,
+            ], 200);
+        }
+
+        return response()->json(['message' => 'User not found'], 404);
+    }
+
+
     public function validateUsername(Request $request)
     {
         $request->validate([
-            'username' => [
-                'required',
-                'string',
-                'max:255',
-                'unique:users,nick_name',
-            ],
-        ], [
-            'username.unique' => 'Sorry, this username is already taken.',
+            'userName' => 'required|string',
         ]);
 
-        return response()->json(['available' => true]);
+        $exists = User::where('nick_name', $request->userName)->exists();
+
+        if ($exists) {
+            return response()->json(['message' => 'Username already exists'], 409);
+        }
+
+        return response()->json(['message' => 'Username is available'], 200);
     }
+
 
     public function updateUser(Request $request, $id)
     {

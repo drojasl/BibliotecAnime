@@ -23,6 +23,7 @@ class Video extends Model
         'year',
         'number',
         'version',
+        'cover',
         'lyrics',
     ];
 }

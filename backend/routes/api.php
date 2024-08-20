@@ -3,46 +3,47 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\dataController;
-use App\Http\Controllers\videoController;
 use App\Http\Controllers\userController;
-
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
-*/
-
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
+use App\Http\Controllers\videoController;
 
 //? UPLOAD VIDEOS DATA
-Route::post('/languages', [dataController::class, 'getLanguages']);
+Route::get('/languages', [DataController::class, 'getLanguages']);
 Route::post('/uploadVideo', [dataController::class, 'setVideoDataUpload']);
 Route::post('/updateVideo', [dataController::class, 'updateVideoData']);
 
 //? VIDEOS DATA
 Route::get('/current/{userId}', [videoController::class, 'getCurrentVideo']);
 Route::get('/next/{userId}', [videoController::class, 'getNextVideo']);
-Route::get('/currentEnded/{videoId}',[videoController::class, 'currentVideoEnded']);
+Route::get('/currentEnded/{videoId}', [videoController::class, 'currentVideoEnded']);
 Route::post('/setRatingVideo', [videoController::class, 'setRatingVideo']);
-Route::post('/getVideosQueue',  [videoController::class, 'getVideosQueue']);
+Route::get('/getVideosWithRatings', [videoController::class, 'getVideosWithRatings']);
+Route::get('/getUserPosts',  [videoController::class, 'getUserPosts']);
 Route::post('/getVideoRating', [videoController::class, 'getVideoRating']);
-Route::post('/addSongToPlaylist', [videoController::class, 'addVideoToPlaylist']);
-Route::post('/createNewPlaylist', [videoController::class, 'createNewPlaylist']);
-Route::delete('/playlists/{playlistId}/delete/{videoId}', [VideoController::class, 'deleteVideoFromPlaylist']);
-Route::put('/playlists/update/{playlistId}', [VideoController::class, 'updatePlaylistName']);
-Route::delete('/deltePlaylist/{playlistId}', [VideoController::class, 'deletePlaylist']);
+Route::get('/videos/anime/{filename}', function ($filename) {
+    $path = base_path('public_html/videos/anime/' . $filename);
 
-//? USER AUTHENTICATION
+    if (!file_exists($path)) {
+        abort(404);
+    }
+
+    return response()->file($path);
+});
+
+//? PLAYLIST DATA
+Route::get('/getUserPlaylists', [VideoController::class, 'getUserPlaylists']);
+Route::get('/getPlaylist/{token}', [VideoController::class, 'getPlaylist']);
+Route::post('/addSongToPlaylist', [videoController::class, 'addVideoToPlaylist']);
+Route::post('/updatePlaylistOrder/{token}', [videoController::class, 'updatePlaylistOrder']);
+Route::post('/playlists/create', [videoController::class, 'createNewPlaylist']);
+Route::delete('/playlists/{playlistId}/delete/{videoId}', [VideoController::class, 'deleteVideoFromPlaylist']);
+Route::put('/playlists/update/{token}', [VideoController::class, 'updatePlaylist']);
+Route::delete('/playlists/deletePlaylist/{token}', [VideoController::class, 'deletePlaylist']);
+Route::get('/playlists/share/{token}', [VideoController::class, 'sharePlaylist']);
+
+//? USER
 Route::post('/login', [userController::class, 'logIn']);
-Route::post('/login/google', [userController::class, 'authGoogle']);
 Route::post('/signup', [userController::class, 'signUp']);
 Route::get('/users/{username}', [userController::class, 'getUserByUsername']);
-Route::post('/validate-username', [UserController::class, 'validateUsername']);
+Route::put('/profile/update/{token}', [userController::class, 'updateProfile']);
+Route::post('/profile/validateUsername', [UserController::class, 'validateUsername']);
 Route::put('/users/update/{id}', [UserController::class, 'updateUser']);

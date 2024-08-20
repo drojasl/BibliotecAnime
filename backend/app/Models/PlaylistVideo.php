@@ -11,17 +11,13 @@ class PlaylistVideo extends Model
 
     protected $table = 'playlist_video';
 
-    protected $guarded = ['created_at', 'updated_at'];
-
-    const LIVE_PLAYLIST_ID = 1;
-
-    public function video()
-    {
-        return $this->belongsTo(Video::class);
-    }
+    protected $fillable = [
+        'playlist_id',
+        'video_id',
+    ];
 
     public function playlist()
     {
-        return $this->belongsTo(Playlist::class);
+        return $this->belongsTo(Playlist::class, 'playlist_id', 'id');
     }
 }

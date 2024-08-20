@@ -19,6 +19,7 @@ class CreatePlaylistVideoTable extends Migration
             $table->unsignedBigInteger('video_id');
             $table->foreign('playlist_id')->references('id')->on('playlists')->onDelete('cascade');
             $table->foreign('video_id')->references('id')->on('videos')->onDelete('cascade');
+            $table->integer('order')->nullable();
             $table->timestamps();
         });
     }
